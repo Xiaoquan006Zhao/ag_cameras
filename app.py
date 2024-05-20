@@ -51,6 +51,7 @@ def int_to_mac(mac_value):
 
 
 class ImageSaverApp:
+
     def __init__(self, root, save_directory_path, Set_exposure):
         self.root = root
         self.count = 1
@@ -74,23 +75,23 @@ class ImageSaverApp:
         self.img_label.pack(fill="both", expand=True)
 
         # Buttons and inputs
-        self.prefix_label = tk.Label(root, text="Naming Prefix:")
-        self.prefix_label.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
-
-        self.prefix_entry = tk.Entry(root, textvariable=self.naming_prefix, width=20)
-        self.prefix_entry.grid(row=0, column=2, padx=10, pady=10, sticky="ew")
-
-        self.count_label = tk.Label(root, text="Image Counter:")
-        self.count_label.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
-
-        self.count_entry = tk.Entry(root, textvariable=self.image_count, width=20)
-        self.count_entry.grid(row=1, column=2, padx=10, pady=10, sticky="ew")
-
         self.subfolder_label = tk.Label(root, text="Subfolder Name:")
-        self.subfolder_label.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
+        self.subfolder_label.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
 
         self.subfolder_entry = tk.Entry(root, textvariable=self.subfolder_name, width=20)
-        self.subfolder_entry.grid(row=2, column=2, padx=10, pady=10, sticky="ew")
+        self.subfolder_entry.grid(row=0, column=2, padx=10, pady=10, sticky="ew")
+
+        self.prefix_label = tk.Label(root, text="Naming Prefix:")
+        self.prefix_label.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
+
+        self.prefix_entry = tk.Entry(root, textvariable=self.naming_prefix, width=20)
+        self.prefix_entry.grid(row=1, column=2, padx=10, pady=10, sticky="ew")
+
+        self.count_label = tk.Label(root, text="Image Counter:")
+        self.count_label.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
+
+        self.count_entry = tk.Entry(root, textvariable=self.image_count, width=20)
+        self.count_entry.grid(row=2, column=2, padx=10, pady=10, sticky="ew")
 
         self.image_count_label = tk.Label(root, text=f"Images Saved: {self.count - 1}")
         self.image_count_label.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
@@ -275,7 +276,7 @@ class ImageSaverApp:
         self.show_popup(f"Image saved as {filename}")
 
         # Revert the button style after 0.2seconds
-        self.root.after(2000, lambda: self.revert_button(self.button3, original_text, original_color))
+        self.root.after(2000, lambda: self.revert_button(self.button2, original_text, original_color))
 
     # Show a popup message for a short duration
     def show_popup(self, message):
