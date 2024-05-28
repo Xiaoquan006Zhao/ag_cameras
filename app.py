@@ -9,6 +9,7 @@ import json
 from sys import platform
 from PIL import Image, ImageTk
 from camera_setup import create_devices_with_tries, Camera_On, Camera_off
+from arena_api.system import system
 
 # Load calibration data
 mapx = mapy = None
@@ -23,8 +24,8 @@ mapx, mapy = cv2.initUndistortRectifyMap(mtx, dist, None, newcameramtx, (w, h), 
 x, y, w, h = roi
 
 # MAC addresses of the cameras to be used in order
-MAC_list = ["1C:0F:AF:0D:05:91", "1C:0F:AF:3D:3F:15", "1C:0F:AF:03:6B:4E", "1C:0F:AF:0E:B3:2D"]
-# MAC_list = ["1C:0F:AF:3D:3F:15", "1C:0F:AF:03:6B:4E"]
+# MAC_list = ["1C:0F:AF:0D:05:91", "1C:0F:AF:3D:3F:15", "1C:0F:AF:03:6B:4E", "1C:0F:AF:0E:B3:2D"]
+MAC_list = ["1C:0F:AF:0D:05:91", "1C:0F:AF:3D:3F:15"]
 
 
 # Function to thread safe print to the console
@@ -208,22 +209,35 @@ class ImageSaverApp:
 
     def view_image(self, image_array_list):
         buffer_bytes_per_pixel = 3
+        border_size = 10  # Define the border size
         self.button3.grid_remove()
         height = h
         width = w
 
-        # Create a 2x2 grid to display the images
-        combined_images = np.zeros((2 * height, 2 * width, buffer_bytes_per_pixel), dtype=np.uint8)
+        # Create a 2x2 grid to display the images, including space for the borders
+        combined_images = np.zeros(
+            (2 * (height + 2 * border_size), 2 * (width + 2 * border_size), buffer_bytes_per_pixel), dtype=np.uint8
+        )
 
         for _, (npndarray, i) in enumerate(image_array_list):
             # Preprocess: lighting adjustment, undistortion, and cropping
             npndarray = cv2.convertScaleAbs(npndarray, alpha=10, beta=60)
             dst = cv2.remap(npndarray, mapx, mapy, cv2.INTER_LINEAR)
             dst = dst[y : y + h, x : x + w]
+            cv2.imwrite(f"stitch/image_{i}_{self.count}.jpg", dst)
 
-            # put the image in the right place in the 2x2 grid
+            # Add white border to the image
+            dst_with_border = cv2.copyMakeBorder(
+                dst, border_size, border_size, border_size, border_size, cv2.BORDER_CONSTANT, value=[255, 255, 255]
+            )
+
+            # Put the image in the right place in the 2x2 grid
             row, col = divmod(i, 2)
-            combined_images[row * height : (row + 1) * height, col * width : (col + 1) * width, :] = dst
+            combined_images[
+                row * (height + 2 * border_size) : (row + 1) * (height + 2 * border_size),
+                col * (width + 2 * border_size) : (col + 1) * (width + 2 * border_size),
+                :,
+            ] = dst_with_border
 
         # Resize the combined image and display it
         view_image = cv2.resize(combined_images, (0, 0), fx=0.2, fy=0.2)
@@ -261,7 +275,7 @@ class ImageSaverApp:
         if prefix:
             filename = f"{prefix}_image{self.count}.jpg"
         else:
-            filename = f"image_{self.count}_Exposure{int(self.Set_exposure)}.jpg"
+            filename = f"image_{self.count}.jpg"
 
         # Save the image and update the image count
         file_path = os.path.join(subfolder_path, filename)
@@ -301,6 +315,8 @@ def on_closing():
     print("Closing application...")
     for frame in app.frame_list:
         Camera_off(frame)
+
+    system.destroy_device()
     app.root.destroy()
 
 
