@@ -88,9 +88,9 @@ def Camera_On(Set_exposure, which_camera, device):
             set_node_value(device.tl_stream_nodemap, "StreamAutoNegotiatePacketSize", True)
             set_node_value(device.tl_stream_nodemap, "StreamPacketResendEnable", True)
 
-            set_node_value(device.nodemap, "AcquisitionMode", "Continuous")
+            # set_node_value(device.nodemap, "AcquisitionMode", "Continuous")
             set_node_value(device.nodemap, "AcquisitionStartMode", "PTPSync")
-            set_node_value(device.tl_stream_nodemap, "StreamBufferHandlingMode", "NewestOnly")
+            set_node_value(device.tl_stream_nodemap, "StreamBufferHandlingMode", "OldestFirst")
             set_node_value(device.nodemap, "PixelFormat", "BGR8")
 
             i = self.which_camera
@@ -100,9 +100,9 @@ def Camera_On(Set_exposure, which_camera, device):
                 set_node_value(device.nodemap, "PtpSlaveOnly", True)
 
             # Set Packet Delay and Transmission Delay based on device index
-            packet_delay = 120000
+            packet_delay = 240000
             # packet_delay = 80000
-            transmission_delay = 0 if i == 0 else 40000 * i
+            transmission_delay = 0 if i == 0 else 80000 * i
             set_node_value(device.nodemap, "GevSCPD", packet_delay)
             set_node_value(device.nodemap, "GevSCFTD", transmission_delay)
 
@@ -153,16 +153,14 @@ def Camera_On(Set_exposure, which_camera, device):
             return self.frame_holder
 
         def stop_stream(self):
-            with threading.Lock():
-                if self.working_properly:
-                    self.working_properly = False
-                    self.device.stop_stream()
-                    self.device.nodemap["UserSetSelector"].value = "Default"
-                    self.device.nodemap["UserSetLoad"].execute()
+            if self.working_properly:
+                self.device.stop_stream()
+                self.device.nodemap["UserSetSelector"].value = "Default"
+                self.device.nodemap["UserSetLoad"].execute()
 
-                    print(
-                        f"Shutting camera_{self.which_camera} (Status: {get_node_value(self.device.nodemap, 'PtpStatus')})"
-                    )
+                print(
+                    f"Shutting camera_{self.which_camera} (Status: {get_node_value(self.device.nodemap, 'PtpStatus')})"
+                )
 
     frame0 = Video_Capture(Set_exposure, which_camera, device)
     return frame0
