@@ -24,8 +24,8 @@ mapx, mapy = cv2.initUndistortRectifyMap(mtx, dist, None, newcameramtx, (w, h), 
 x, y, w, h = roi
 
 # MAC addresses of the cameras to be used in order
-# MAC_list = ["1C:0F:AF:0D:05:91", "1C:0F:AF:3D:3F:15", "1C:0F:AF:03:6B:4E", "1C:0F:AF:0E:B3:2D"]
-MAC_list = ["1C:0F:AF:0D:05:91", "1C:0F:AF:3D:3F:15"]
+MAC_list = ["1C:0F:AF:0D:05:91", "1C:0F:AF:3D:3F:15", "1C:0F:AF:03:6B:4E", "1C:0F:AF:0E:B3:2D"]
+# MAC_list = ["1C:0F:AF:0D:05:91", "1C:0F:AF:3D:3F:15"]
 
 
 # Function to thread safe print to the console
@@ -109,21 +109,16 @@ class ImageSaverApp:
     def camera_init(self):
         # Initialize the cameras, their thread events, and main app thread condition
         self.frame_list = [None] * len(MAC_list)
-        self.threading_event_list = [None] * len(MAC_list)
-        self.threading_condition = threading.Condition()
-
         devices = create_devices_with_tries()
 
         # Initialize the cameras in MAC_list order
         for i in range(len(devices)):
-            event = threading.Event()
             mac_address = int_to_mac(devices[i].nodemap.get_node("GevMACAddress").value)
             assert mac_address in MAC_list, f"MAC address {mac_address} not found in MAC_list"
             index = MAC_list.index(mac_address)
 
             # Populate frame_list and threading_event_list
-            self.threading_event_list[index] = event
-            self.frame_list[index] = Camera_On(self.Set_exposure, index, devices[i], event, self.threading_condition)
+            self.frame_list[index] = Camera_On(self.Set_exposure, index, devices[i])
 
         # Wait for all cameras to negotiate PTP Sync
         i = 0
@@ -188,27 +183,15 @@ class ImageSaverApp:
 
     def view_save_loop(self):
         # Continuously check if all frames are ready to be displayed
+
         while True:
             with threading.Lock():
-                # Wait for all frames to be ready
-                for threading_event in self.threading_event_list:
-                    threading_event.wait()
-
                 buffer_list = []
                 for index, frame in enumerate(self.frame_list):
                     img_array = frame.read()
                     buffer_list.append(img_array)
 
-                safe_print(f"All buffer Ready! {len(buffer_list)} frames received")
                 self.view_image(buffer_list)
-
-                # Clear all threading events for next iteration
-                for threading_event in self.threading_event_list:
-                    threading_event.clear()
-
-                # Notify all frames to start capturing the next image
-                with self.threading_condition:
-                    self.threading_condition.notify_all()
 
     def view_image(self, image_array_list):
         buffer_bytes_per_pixel = 3
@@ -222,25 +205,27 @@ class ImageSaverApp:
             (2 * (height + 2 * border_size), 2 * (width + 2 * border_size), buffer_bytes_per_pixel), dtype=np.uint8
         )
 
-        for _, (npndarray, i) in enumerate(image_array_list):
-            # Preprocess: lighting adjustment, undistortion, and cropping
-            npndarray = cv2.convertScaleAbs(npndarray, alpha=10, beta=60)
-            dst = cv2.remap(npndarray, mapx, mapy, cv2.INTER_LINEAR)
-            dst = dst[y : y + h, x : x + w]
-            cv2.imwrite(f"stitch/image_{i}_{self.count}.jpg", dst)
+        for _, image_array in enumerate(image_array_list):
+            if image_array is not None:
+                (npndarray, i) = image_array
+                # Preprocess: lighting adjustment, undistortion, and cropping
+                npndarray = cv2.convertScaleAbs(npndarray, alpha=10, beta=60)
+                dst = cv2.remap(npndarray, mapx, mapy, cv2.INTER_LINEAR)
+                dst = dst[y : y + h, x : x + w]
+                cv2.imwrite(f"stitch/image_{i}_{self.count}.jpg", dst)
 
-            # Add white border to the image
-            dst_with_border = cv2.copyMakeBorder(
-                dst, border_size, border_size, border_size, border_size, cv2.BORDER_CONSTANT, value=[255, 255, 255]
-            )
+                # Add white border to the image
+                dst_with_border = cv2.copyMakeBorder(
+                    dst, border_size, border_size, border_size, border_size, cv2.BORDER_CONSTANT, value=[255, 255, 255]
+                )
 
-            # Put the image in the right place in the 2x2 grid
-            row, col = divmod(i, 2)
-            combined_images[
-                row * (height + 2 * border_size) : (row + 1) * (height + 2 * border_size),
-                col * (width + 2 * border_size) : (col + 1) * (width + 2 * border_size),
-                :,
-            ] = dst_with_border
+                # Put the image in the right place in the 2x2 grid
+                row, col = divmod(i, 2)
+                combined_images[
+                    row * (height + 2 * border_size) : (row + 1) * (height + 2 * border_size),
+                    col * (width + 2 * border_size) : (col + 1) * (width + 2 * border_size),
+                    :,
+                ] = dst_with_border
 
         # Resize the combined image and display it
         view_image = cv2.resize(combined_images, (0, 0), fx=0.2, fy=0.2)

@@ -56,14 +56,12 @@ def create_devices_with_tries():
             raise Exception(f"No device found! Please connect a device and run " f"the example again.")
 
 
-def Camera_On(Set_exposure, which_camera, device, threading_event, threading_condition):
+def Camera_On(Set_exposure, which_camera, device):
     class Video_Capture:
-        def __init__(self, Set_exposure, which_camera, device, threading_event, threading_condition):
+        def __init__(self, Set_exposure, which_camera, device):
             self.frame_holder = None
             self.device = device
             self.which_camera = which_camera
-            self.threading_event = threading_event
-            self.threading_condition = threading_condition
             self.working_properly = False
             self.num_channels = 3
             self.setup(Set_exposure)
@@ -102,8 +100,9 @@ def Camera_On(Set_exposure, which_camera, device, threading_event, threading_con
                 set_node_value(device.nodemap, "PtpSlaveOnly", True)
 
             # Set Packet Delay and Transmission Delay based on device index
-            packet_delay = 240000
-            transmission_delay = 0 if i == 0 else 80000 * i
+            packet_delay = 120000
+            # packet_delay = 80000
+            transmission_delay = 0 if i == 0 else 40000 * i
             set_node_value(device.nodemap, "GevSCPD", packet_delay)
             set_node_value(device.nodemap, "GevSCFTD", transmission_delay)
 
@@ -122,13 +121,12 @@ def Camera_On(Set_exposure, which_camera, device, threading_event, threading_con
         def start_stream(self):
             safe_print(f"Camera_{self.which_camera} starts streaming.")
 
-            with self.device.start_stream():
-                self.working_properly = True
+            with threading.Lock():
+                with self.device.start_stream():
+                    self.working_properly = True
 
-                # Continuously get buffer
-                while True:
-                    with threading.Lock():
-                        safe_print(self.threading_event)
+                    # Continuously get buffer
+                    while self.working_properly:
                         buffer = self.device.get_buffer()
 
                         # Convert buffer data to a numpy array
@@ -141,37 +139,32 @@ def Camera_On(Set_exposure, which_camera, device, threading_event, threading_con
                             buffer=array, dtype=np.uint8, shape=(item.height, item.width, buffer_bytes_per_pixel)
                         )
 
-                        # Save the buffer to the holder
-                        self.frame_holder = (npndarray, self.which_camera)
+                        # Make a deep copy of the numpy array
+                        npndarray_copy = np.copy(npndarray)
 
-                        # Notify the main app that this camera has finished pushing buffer
-                        self.threading_event.set()
+                        # Save the deep copy of the buffer to the holder
+                        self.frame_holder = (npndarray_copy, self.which_camera)
 
-                    # Wait for other cameras to finish pushing buffer
-                    with self.threading_condition:
-                        safe_print(f"Camera_{self.which_camera} finished pushing buffer. Waiting for other Cameras.")
-
-                        # Waiting for main app to receive all buffers and successfully display them
-                        self.threading_condition.wait()
-
-                    # Reset the memory usgae of the buffer
-                    BufferFactory.destroy(item)
-                    self.device.requeue_buffer(buffer)
+                        # Reset the memory usgae of the buffer
+                        BufferFactory.destroy(item)
+                        self.device.requeue_buffer(buffer)
 
         def read(self):
             return self.frame_holder
 
         def stop_stream(self):
-            if self.working_properly:
-                self.device.stop_stream()
-                self.device.nodemap["UserSetSelector"].value = "Default"
-                self.device.nodemap["UserSetLoad"].execute()
+            with threading.Lock():
+                if self.working_properly:
+                    self.working_properly = False
+                    self.device.stop_stream()
+                    self.device.nodemap["UserSetSelector"].value = "Default"
+                    self.device.nodemap["UserSetLoad"].execute()
 
-                print(
-                    f"Shutting camera_{self.which_camera} (Status: {get_node_value(self.device.nodemap, 'PtpStatus')})"
-                )
+                    print(
+                        f"Shutting camera_{self.which_camera} (Status: {get_node_value(self.device.nodemap, 'PtpStatus')})"
+                    )
 
-    frame0 = Video_Capture(Set_exposure, which_camera, device, threading_event, threading_condition)
+    frame0 = Video_Capture(Set_exposure, which_camera, device)
     return frame0
 
 
