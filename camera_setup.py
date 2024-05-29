@@ -89,13 +89,19 @@ def Camera_On(Set_exposure, which_camera, device, threading_event, threading_con
             # is transmitting at a time.
             set_node_value(device.tl_stream_nodemap, "StreamAutoNegotiatePacketSize", True)
             set_node_value(device.tl_stream_nodemap, "StreamPacketResendEnable", True)
+
             set_node_value(device.nodemap, "AcquisitionMode", "Continuous")
             set_node_value(device.nodemap, "AcquisitionStartMode", "PTPSync")
             set_node_value(device.tl_stream_nodemap, "StreamBufferHandlingMode", "NewestOnly")
             set_node_value(device.nodemap, "PixelFormat", "BGR8")
 
-            # Set Packet Delay and Transmission Delay based on device index
             i = self.which_camera
+            if i == 0:  # camera_0
+                set_node_value(device.nodemap, "PtpSlaveOnly", False)
+            else:
+                set_node_value(device.nodemap, "PtpSlaveOnly", True)
+
+            # Set Packet Delay and Transmission Delay based on device index
             packet_delay = 240000
             transmission_delay = 0 if i == 0 else 80000 * i
             set_node_value(device.nodemap, "GevSCPD", packet_delay)
@@ -161,7 +167,9 @@ def Camera_On(Set_exposure, which_camera, device, threading_event, threading_con
                 self.device.nodemap["UserSetSelector"].value = "Default"
                 self.device.nodemap["UserSetLoad"].execute()
 
-                print(f"Shutting camera_{self.which_camera}")
+                print(
+                    f"Shutting camera_{self.which_camera} (Status: {get_node_value(self.device.nodemap, 'PtpStatus')})"
+                )
 
     frame0 = Video_Capture(Set_exposure, which_camera, device, threading_event, threading_condition)
     return frame0

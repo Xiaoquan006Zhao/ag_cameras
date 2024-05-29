@@ -134,11 +134,11 @@ class ImageSaverApp:
             for frame in self.frame_list:
                 device = frame.device
                 ptpStatus = device.nodemap.get_node("PtpStatus").value
-                camera_index = int(frame.which_camera)
+                # camera_index = int(frame.which_camera)
 
-                device.nodemap.get_node("GevSCPD").value = 240000
-                offsetTime = camera_index * 80000
-                device.nodemap.get_node("GevSCFTD").value = offsetTime
+                # device.nodemap.get_node("GevSCPD").value = 240000
+                # offsetTime = camera_index * 80000
+                # device.nodemap.get_node("GevSCFTD").value = offsetTime
 
                 if ptpStatus == "Master":
                     if masterFound:
@@ -156,6 +156,9 @@ class ImageSaverApp:
             time.sleep(1)
             i += 1
             print(f"Trying {i}th Negotiate. MasterFound: {masterFound}.")
+
+        for frame in self.frame_list:
+            print(f"Creating camera_{frame.which_camera} (Status: {frame.device.nodemap.get_node('PtpStatus').value})")
 
     # Function to handle button click event style and return the original text and color
     def button_click(self, button, display_text, bg_color="red"):
