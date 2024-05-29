@@ -64,6 +64,7 @@ def Camera_On(Set_exposure, which_camera, device):
             self.which_camera = which_camera
             self.working_properly = False
             self.num_channels = 3
+            self.ready_to_stop = threading.Event()
             self.setup(Set_exposure)
 
         # Start stream in a separate thread
@@ -126,7 +127,7 @@ def Camera_On(Set_exposure, which_camera, device):
                     self.working_properly = True
 
                     # Continuously get buffer
-                    while self.working_properly:
+                    while not self.ready_to_stop.is_set():
                         buffer = self.device.get_buffer()
 
                         # Convert buffer data to a numpy array
@@ -154,6 +155,8 @@ def Camera_On(Set_exposure, which_camera, device):
 
         def stop_stream(self):
             if self.working_properly:
+                self.ready_to_stop.set()
+                time.sleep(2)
                 self.device.stop_stream()
                 self.device.nodemap["UserSetSelector"].value = "Default"
                 self.device.nodemap["UserSetLoad"].execute()
