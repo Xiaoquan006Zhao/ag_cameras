@@ -138,33 +138,32 @@ def Camera_On(Set_exposure, which_camera, device):
 
                     # Continuously get buffer
                     while True:
-                        with threading.Lock():
-                            if self.stopped.is_set():
-                                break
+                        if self.stopped.is_set():
+                            break
 
-                            buffer = self.device.get_buffer()
+                        buffer = self.device.get_buffer()
 
-                            # Convert buffer data to a numpy array
-                            item = BufferFactory.copy(buffer)
-                            buffer_bytes_per_pixel = int(len(item.data) / (item.width * item.height))
-                            array = (ctypes.c_ubyte * self.num_channels * item.width * item.height).from_address(
-                                ctypes.addressof(item.pbytes)
-                            )
-                            npndarray = np.ndarray(
-                                buffer=array,
-                                dtype=np.uint8,
-                                shape=(item.height, item.width, buffer_bytes_per_pixel),
-                            )
+                        # Convert buffer data to a numpy array
+                        item = BufferFactory.copy(buffer)
+                        buffer_bytes_per_pixel = int(len(item.data) / (item.width * item.height))
+                        array = (ctypes.c_ubyte * self.num_channels * item.width * item.height).from_address(
+                            ctypes.addressof(item.pbytes)
+                        )
+                        npndarray = np.ndarray(
+                            buffer=array,
+                            dtype=np.uint8,
+                            shape=(item.height, item.width, buffer_bytes_per_pixel),
+                        )
 
-                            # Make a deep copy of the numpy array
-                            npndarray_copy = np.copy(npndarray)
+                        # Make a deep copy of the numpy array
+                        npndarray_copy = np.copy(npndarray)
 
-                            # Save the deep copy of the buffer to the holder
-                            self.frame_holder = (npndarray_copy, self.which_camera)
+                        # Save the deep copy of the buffer to the holder
+                        self.frame_holder = (npndarray_copy, self.which_camera)
 
-                            # Reset the memory usgae of the buffer
-                            BufferFactory.destroy(item)
-                            self.device.requeue_buffer(buffer)
+                        # Reset the memory usgae of the buffer
+                        BufferFactory.destroy(item)
+                        self.device.requeue_buffer(buffer)
                 except Exception as e:
                     print(f"Some error happened! Trying to reopen camera_{self.which_camera}...")
                     traceback.print_exc()
@@ -190,4 +189,7 @@ def Camera_On(Set_exposure, which_camera, device):
 
 
 def Camera_off(frame):
+    # ts = threading.Thread(target=frame.stop_stream, args=())
+    # ts.daemon = True
+    # ts.start()
     frame.stop_stream()

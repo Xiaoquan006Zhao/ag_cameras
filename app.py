@@ -206,9 +206,8 @@ class ImageSaverApp:
 
         original_text, original_color = self.button_click(self.button3, display_text="Reloading Config...")
         safe_print("Reloading Config. Shutting down Cameras temporarily.")
-        for frame in app.frame_list:
-            Camera_off(frame)
-        system.destroy_device()
+
+        on_closing(destory_root=False)
 
         load_config()
         self.save_directory_path = save_directory_path
@@ -338,15 +337,23 @@ class ImageSaverApp:
 
 
 # Function to properly close the camera when the application is closed
-def on_closing():
+def on_closing(destory_root=True):
     print("Closing application...")
     print(f"Before closing cameras, total threads number: {threading.active_count()}")
+    closing_threads = []
     for frame in app.frame_list:
-        Camera_off(frame)
+        # Camera_off(frame)
+        closing_threads.append(threading.Thread(target=Camera_off, args=(frame,), daemon=True))
+        closing_threads[-1].start()
+
+    for thread in closing_threads:
+        thread.join()
 
     system.destroy_device()
     print(f"After closing cameras, total threads number: {threading.active_count()}")
-    app.root.destroy()
+
+    if destory_root:
+        app.root.destroy()
 
 
 # Example usage
