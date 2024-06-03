@@ -90,7 +90,9 @@ def Camera_On(Set_exposure, which_camera, device):
             set_node_value(device.tl_stream_nodemap, "StreamPacketResendEnable", True)
 
             # set_node_value(device.nodemap, "AcquisitionMode", "Continuous")
-            set_node_value(device.nodemap, "AcquisitionStartMode", "PTPSync")
+
+            # set_node_value(device.tl_stream_nodemap, "StreamBufferHandlingMode", "OldestFirstOverwrite")
+            # set_node_value(device.tl_stream_nodemap, "StreamBufferHandlingMode", "NewestOnly")
             set_node_value(device.tl_stream_nodemap, "StreamBufferHandlingMode", "OldestFirst")
             set_node_value(device.nodemap, "PixelFormat", "BGR8")
 
@@ -107,15 +109,17 @@ def Camera_On(Set_exposure, which_camera, device):
             set_node_value(device.nodemap, "GevSCPD", packet_delay)
             set_node_value(device.nodemap, "GevSCFTD", transmission_delay)
 
-            # Eanble Max Frame rate
-            acquisition_frame_rate = device.nodemap.get_node("AcquisitionFrameRate")
-            acquisition_frame_rate.value = acquisition_frame_rate.max
-            print(f"acquisition_frame_rate: {get_node_value(device.nodemap, 'AcquisitionFrameRate')}")
+            set_node_value(device.nodemap, "AcquisitionStartMode", "PTPSync")
 
-            # PTPSyncFrameRate (for some cameras, this node may not be available)
-            # print(f"{TAB3}ptp_sync_frame_rate: {get_node_value(device.nodemap, 'PTPSyncFrameRate')}")
-            # ptp_sync_frame_rate = device.nodemap.get_node("PTPSyncFrameRate")
-            # ptp_sync_frame_rate.value = 5.0
+            # Eanble Max Frame rate
+            # acquisition_frame_rate = device.nodemap.get_node("AcquisitionFrameRate")
+            # acquisition_frame_rate.value = acquisition_frame_rate.max
+            # print(f"acquisition_frame_rate: {get_node_value(device.nodemap, 'AcquisitionFrameRate')}")
+
+            # PTPSyncFrameRate
+            ptp_sync_frame_rate = device.nodemap.get_node("PTPSyncFrameRate")
+            ptp_sync_frame_rate.value = 1.0
+            print(f"ptp_sync_frame_rate: {get_node_value(device.nodemap, 'PTPSyncFrameRate')}")
 
             return self.num_channels
 
@@ -123,32 +127,41 @@ def Camera_On(Set_exposure, which_camera, device):
             safe_print(f"Camera_{self.which_camera} starts streaming.")
 
             with threading.Lock():
-                with self.device.start_stream():
-                    self.working_properly = True
+                while True:
+                    try:
+                        with self.device.start_stream():
+                            self.working_properly = True
 
-                    # Continuously get buffer
-                    while not self.ready_to_stop.is_set():
-                        buffer = self.device.get_buffer()
+                            # Continuously get buffer
+                            while not self.ready_to_stop.is_set():
+                                buffer = self.device.get_buffer()
 
-                        # Convert buffer data to a numpy array
-                        item = BufferFactory.copy(buffer)
-                        buffer_bytes_per_pixel = int(len(item.data) / (item.width * item.height))
-                        array = (ctypes.c_ubyte * self.num_channels * item.width * item.height).from_address(
-                            ctypes.addressof(item.pbytes)
-                        )
-                        npndarray = np.ndarray(
-                            buffer=array, dtype=np.uint8, shape=(item.height, item.width, buffer_bytes_per_pixel)
-                        )
+                                # Convert buffer data to a numpy array
+                                item = BufferFactory.copy(buffer)
+                                buffer_bytes_per_pixel = int(len(item.data) / (item.width * item.height))
+                                array = (ctypes.c_ubyte * self.num_channels * item.width * item.height).from_address(
+                                    ctypes.addressof(item.pbytes)
+                                )
+                                npndarray = np.ndarray(
+                                    buffer=array,
+                                    dtype=np.uint8,
+                                    shape=(item.height, item.width, buffer_bytes_per_pixel),
+                                )
 
-                        # Make a deep copy of the numpy array
-                        npndarray_copy = np.copy(npndarray)
+                                # Make a deep copy of the numpy array
+                                npndarray_copy = np.copy(npndarray)
 
-                        # Save the deep copy of the buffer to the holder
-                        self.frame_holder = (npndarray_copy, self.which_camera)
+                                # Save the deep copy of the buffer to the holder
+                                self.frame_holder = (npndarray_copy, self.which_camera)
 
-                        # Reset the memory usgae of the buffer
-                        BufferFactory.destroy(item)
-                        self.device.requeue_buffer(buffer)
+                                # Reset the memory usgae of the buffer
+                                BufferFactory.destroy(item)
+                                self.device.requeue_buffer(buffer)
+
+                            break
+                    except:
+                        print(f"Some error happened! Trying to reopen camera_{self.which_camera}...")
+                        time.sleep(3)
 
         def read(self):
             return self.frame_holder
@@ -156,14 +169,14 @@ def Camera_On(Set_exposure, which_camera, device):
         def stop_stream(self):
             if self.working_properly:
                 self.ready_to_stop.set()
-                time.sleep(2)
-                self.device.stop_stream()
-                self.device.nodemap["UserSetSelector"].value = "Default"
-                self.device.nodemap["UserSetLoad"].execute()
-
-                print(
-                    f"Shutting camera_{self.which_camera} (Status: {get_node_value(self.device.nodemap, 'PtpStatus')})"
-                )
+                time.sleep(2.5)
+                try:
+                    self.device.stop_stream()
+                    print(
+                        f"Shutting camera_{self.which_camera} (Status: {get_node_value(self.device.nodemap, 'PtpStatus')})"
+                    )
+                except:
+                    print(f"Error stopping camera_{self.which_camera}")
 
     frame0 = Video_Capture(Set_exposure, which_camera, device)
     return frame0
