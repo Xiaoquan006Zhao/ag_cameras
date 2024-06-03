@@ -4,9 +4,15 @@ MAC_list:
   - "1C:0F:AF:3D:3F:15"
   - "1C:0F:AF:03:6B:4E"
   - "1C:0F:AF:0E:B3:2D"
+
+# Top two cameras
+# MAC_list:
+#   - "1C:0F:AF:0D:05:91"
+#   - "1C:0F:AF:3D:3F:15"
+
 # Master directory to saved images
 save_directory_path: "images/"
 # Exposure of the cameras in arena_api
-Set_exposure: 2000.0
+Set_exposure: 6000.0
 # Debug utilities for viualizing boundaries of each camera in grid
 border_size: 10

@@ -5,7 +5,7 @@ import ctypes
 import numpy as np
 import cv2
 import os
-
+import traceback
 from arena_api.system import system
 from arena_api.buffer import BufferFactory
 from arena_api.__future__.save import Writer
@@ -14,6 +14,11 @@ import json
 
 width1 = 2048
 height1 = 1536
+
+
+def safe_print(*args, **kwargs):
+    with threading.Lock():
+        print(*args, **kwargs)
 
 
 def set_node_value(nodemap, node, value):
@@ -65,13 +70,14 @@ def Camera_On(Set_exposure, which_camera, device):
             self.working_properly = False
             self.num_channels = 3
             self.ready_to_stop = threading.Event()
+            self.stopped = threading.Event()
             self.setup(Set_exposure)
 
         # Start stream in a separate thread
         def startProcess(self):
-            t = threading.Thread(target=self.start_stream, args=())
-            t.daemon = True
-            t.start()
+            self.t = threading.Thread(target=self.start_stream, args=())
+            self.t.daemon = True
+            self.t.start()
 
         def setup(self, Set_exposure):
             nodemap = self.device.nodemap
@@ -103,7 +109,7 @@ def Camera_On(Set_exposure, which_camera, device):
                 set_node_value(device.nodemap, "PtpSlaveOnly", True)
 
             # Set Packet Delay and Transmission Delay based on device index
-            packet_delay = 240000
+            packet_delay = 300000
             # packet_delay = 80000
             transmission_delay = 0 if i == 0 else 80000 * i
             set_node_value(device.nodemap, "GevSCPD", packet_delay)
@@ -126,50 +132,52 @@ def Camera_On(Set_exposure, which_camera, device):
         def start_stream(self):
             safe_print(f"Camera_{self.which_camera} starts streaming.")
 
-            with threading.Lock():
-                while True:
-                    try:
-                        with self.device.start_stream():
-                            self.working_properly = True
+            while not self.working_properly:
+                try:
+                    self.device.start_stream()
+                    self.working_properly = True
 
-                            # Continuously get buffer
-                            while not self.ready_to_stop.is_set():
-                                buffer = self.device.get_buffer()
+                    # Continuously get buffer
+                    while True:
+                        with threading.Lock():
+                            if self.stopped.is_set():
+                                break
 
-                                # Convert buffer data to a numpy array
-                                item = BufferFactory.copy(buffer)
-                                buffer_bytes_per_pixel = int(len(item.data) / (item.width * item.height))
-                                array = (ctypes.c_ubyte * self.num_channels * item.width * item.height).from_address(
-                                    ctypes.addressof(item.pbytes)
-                                )
-                                npndarray = np.ndarray(
-                                    buffer=array,
-                                    dtype=np.uint8,
-                                    shape=(item.height, item.width, buffer_bytes_per_pixel),
-                                )
+                            buffer = self.device.get_buffer()
 
-                                # Make a deep copy of the numpy array
-                                npndarray_copy = np.copy(npndarray)
+                            # Convert buffer data to a numpy array
+                            item = BufferFactory.copy(buffer)
+                            buffer_bytes_per_pixel = int(len(item.data) / (item.width * item.height))
+                            array = (ctypes.c_ubyte * self.num_channels * item.width * item.height).from_address(
+                                ctypes.addressof(item.pbytes)
+                            )
+                            npndarray = np.ndarray(
+                                buffer=array,
+                                dtype=np.uint8,
+                                shape=(item.height, item.width, buffer_bytes_per_pixel),
+                            )
 
-                                # Save the deep copy of the buffer to the holder
-                                self.frame_holder = (npndarray_copy, self.which_camera)
+                            # Make a deep copy of the numpy array
+                            npndarray_copy = np.copy(npndarray)
 
-                                # Reset the memory usgae of the buffer
-                                BufferFactory.destroy(item)
-                                self.device.requeue_buffer(buffer)
+                            # Save the deep copy of the buffer to the holder
+                            self.frame_holder = (npndarray_copy, self.which_camera)
 
-                            break
-                    except:
-                        print(f"Some error happened! Trying to reopen camera_{self.which_camera}...")
-                        time.sleep(3)
+                            # Reset the memory usgae of the buffer
+                            BufferFactory.destroy(item)
+                            self.device.requeue_buffer(buffer)
+                except Exception as e:
+                    print(f"Some error happened! Trying to reopen camera_{self.which_camera}...")
+                    traceback.print_exc()
+                    time.sleep(3)
 
         def read(self):
             return self.frame_holder
 
         def stop_stream(self):
             if self.working_properly:
-                self.ready_to_stop.set()
-                time.sleep(2.5)
+                self.stopped.set()
+                self.t.join()
                 try:
                     self.device.stop_stream()
                     print(
@@ -184,8 +192,3 @@ def Camera_On(Set_exposure, which_camera, device):
 
 def Camera_off(frame):
     frame.stop_stream()
-
-
-def safe_print(*args, **kwargs):
-    with threading.Lock():
-        print(*args, **kwargs)

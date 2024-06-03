@@ -5,20 +5,12 @@ import threading
 import time
 import subprocess
 import os
+import json
 import yaml
 from sys import platform
 from PIL import Image, ImageTk
 from camera_setup import create_devices_with_tries, Camera_On, Camera_off
 from arena_api.system import system
-
-# Load configuration from YAML file
-with open("config.yaml", "r") as yaml_file:
-    config = yaml.safe_load(yaml_file)
-
-save_directory_path = config["save_directory_path"]
-Set_exposure = config["Set_exposure"]
-MAC_list = config["MAC_list"]
-border_size = config.get("border_size", 10)  # Set a default value if not provided
 
 # Load calibration data
 mapx = mapy = None
@@ -31,6 +23,24 @@ h = calibration_data["image_height"]
 newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
 mapx, mapy = cv2.initUndistortRectifyMap(mtx, dist, None, newcameramtx, (w, h), 5)
 x, y, w, h = roi
+
+
+save_directory_path, Set_exposure, MAC_list, border_size = None, None, None, None
+
+
+def load_config(config_file_path="config.yaml"):
+    global save_directory_path, Set_exposure, MAC_list, border_size
+    # Load configuration from YAML file
+    with open(config_file_path, "r") as yaml_file:
+        config = yaml.safe_load(yaml_file)
+
+    save_directory_path = config["save_directory_path"]
+    Set_exposure = config["Set_exposure"]
+    MAC_list = config["MAC_list"]
+    border_size = config.get("border_size", 10)  # Default value of 10
+
+
+load_config("config.yaml")
 
 
 # Function to thread safe print to the console
@@ -57,12 +67,14 @@ def int_to_mac(mac_value):
 
 
 class ImageSaverApp:
+
     def __init__(self, root, save_directory_path, Set_exposure):
         self.root = root
         self.count = 1
         self.save_directory_path = save_directory_path
         self.Set_exposure = Set_exposure
         self.image_buffer = None
+        self.reloading_event = threading.Event()
         self.camera_init()
 
         # Initialize custom naming pattern variables
@@ -133,6 +145,11 @@ class ImageSaverApp:
             for frame in self.frame_list:
                 device = frame.device
                 ptpStatus = device.nodemap.get_node("PtpStatus").value
+                # camera_index = int(frame.which_camera)
+
+                # device.nodemap.get_node("GevSCPD").value = 240000
+                # offsetTime = camera_index * 80000
+                # device.nodemap.get_node("GevSCFTD").value = offsetTime
 
                 if ptpStatus == "Master":
                     if masterFound:
@@ -154,26 +171,58 @@ class ImageSaverApp:
         for frame in self.frame_list:
             print(f"Creating camera_{frame.which_camera} (Status: {frame.device.nodemap.get_node('PtpStatus').value})")
 
+    # Function to handle button click event style and return the original text and color
     def button_click(self, button, display_text, bg_color="red"):
-        original_text = self.button3.cget("text")
-        original_color = self.button3.cget("bg")
+        original_text = button.cget("text")
+        original_color = button.cget("bg")
         button.config(state="disabled", text=display_text, bg=bg_color)
         self.root.update_idletasks()
 
         return original_text, original_color
 
+    # Function to revert button style to original text and color
     def revert_button(self, button, original_text, original_color):
         button.config(state="normal", text=original_text, bg=original_color)
         self.root.update_idletasks()
 
     def start_process(self):
+        # Change button style to show that the process has started
         original_text, original_color = self.button_click(self.button3, display_text="Starting...")
+
+        # For each frame, start the process in a separate thread
+        for frame in self.frame_list:
+            frame.startProcess()
+
+        self.button3 = tk.Button(root, text="Reload Config", command=self.reload_config, height=2, width=20)
+        self.button3.grid(row=6, column=1, padx=10, pady=10, sticky="ew")
+
+        self.view_save_thread = threading.Thread(target=self.view_save_loop, daemon=True)
+        # self.view_save_thread.daemon = True
+        self.view_save_thread.start()
+
+    def reload_config(self):
+        original_text, original_color = self.button_click(self.button3, display_text="Reloading Config...")
+        safe_print("Reloading Config. Shutting down Cameras temporarily.")
+        self.reloading_event.set()
+
+        combined_images = np.zeros((2 * (h + 2 * border_size), 2 * (w + 2 * border_size), 3), dtype=np.uint8)
+        view_image = cv2.resize(combined_images, (0, 0), fx=0.2, fy=0.2)
+        self.update_image_grid(view_image)
+
+        for frame in app.frame_list:
+            Camera_off(frame)
+        system.destroy_device()
+
+        load_config()
+        self.save_directory_path = save_directory_path
+        self.Set_exposure = Set_exposure
+        self.camera_init()
 
         for frame in self.frame_list:
             frame.startProcess()
 
+        self.reloading_event.clear()
         self.root.after(2000, lambda: self.revert_button(self.button3, original_text, original_color))
-        threading.Thread(target=self.view_save_loop, daemon=True).start()
 
     def view_save_loop(self):
         while True:
@@ -184,83 +233,131 @@ class ImageSaverApp:
 
             self.view_image(buffer_list)
 
+    def update_image_grid(self, view_image):
+        # Convert to PIL image and then to PhotoImage
+        photo_img = Image.fromarray(cv2.cvtColor(view_image, cv2.COLOR_BGR2RGB))
+        photo_img = ImageTk.PhotoImage(photo_img)
+        self.img_label.config(image=photo_img)
+        self.img_label.image = photo_img
+
     def view_image(self, image_array_list):
         buffer_bytes_per_pixel = 3
-
-        self.button3.grid_remove()
-        height = h
-        width = w
-
+        # Create a 2x2 grid to display the images, including space for the borders
         combined_images = np.zeros(
-            (2 * (height + 2 * border_size), 2 * (width + 2 * border_size), buffer_bytes_per_pixel), np.uint8
+            (2 * (h + 2 * border_size), 2 * (w + 2 * border_size), buffer_bytes_per_pixel), dtype=np.uint8
         )
 
-        for idx, image_array in enumerate(image_array_list):
-            row_idx = idx // 2
-            col_idx = idx % 2
-            resized_image_array = cv2.remap(image_array, mapx, mapy, cv2.INTER_LINEAR)
-            resized_image_array = cv2.cvtColor(resized_image_array, cv2.COLOR_BGR2RGB)
-            combined_images[
-                row_idx * (height + 2 * border_size) : (row_idx + 1) * (height + 2 * border_size),
-                col_idx * (width + 2 * border_size) : (col_idx + 1) * (width + 2 * border_size),
-            ] = cv2.copyMakeBorder(
-                resized_image_array,
-                border_size,
-                border_size,
-                border_size,
-                border_size,
-                cv2.BORDER_CONSTANT,
-                None,
-                (0, 0, 0),
-            )
+        for _, image_array in enumerate(image_array_list):
+            if image_array is not None:
+                (npndarray, i) = image_array
+                # Preprocess: lighting adjustment, undistortion, and cropping
+                npndarray = cv2.convertScaleAbs(npndarray, alpha=10, beta=60)
+                dst = cv2.remap(npndarray, mapx, mapy, cv2.INTER_LINEAR)
+                dst = dst[y : y + h, x : x + w]
+                cv2.imwrite(f"stitch/image_{i}_{self.count}.jpg", dst)
 
+                # Add white border to the image
+                dst_with_border = cv2.copyMakeBorder(
+                    dst,
+                    border_size,
+                    border_size,
+                    border_size,
+                    border_size,
+                    cv2.BORDER_CONSTANT,
+                    value=[255, 255, 255],
+                )
+
+                # Put the image in the right place in the 2x2 grid
+                row, col = divmod(i, 2)
+                combined_images[
+                    row * (h + 2 * border_size) : (row + 1) * (h + 2 * border_size),
+                    col * (w + 2 * border_size) : (col + 1) * (w + 2 * border_size),
+                    :,
+                ] = dst_with_border
+
+        # Resize the combined image and display it
+        view_image = cv2.resize(combined_images, (0, 0), fx=0.2, fy=0.2)
+        # Save the combined image to the image_buffer for future saving
         self.image_buffer = combined_images
 
-        combined_images_pil = Image.fromarray(combined_images)
-        imgtk = ImageTk.PhotoImage(image=combined_images_pil)
-        self.img_label.configure(image=imgtk)
-        self.img_label.image = imgtk
-
-    def open_explorer(self):
-        path = os.path.realpath(self.save_directory_path)
-        if platform.startswith("linux"):
-            subprocess.Popen(["xdg-open", path])
-        elif platform.startswith("win32"):
-            os.startfile(path)
-        elif platform.startswith("darwin"):
-            subprocess.Popen(["open", path])
+        self.update_image_grid(view_image)
 
     def save_image(self):
-        original_text, original_color = self.button_click(self.button2, display_text="Saving...", bg_color="red")
+        assert self.image_buffer is not None, "No image to save"
+        original_text, original_color = self.button_click(self.button2, display_text="Saving...")
 
-        if self.image_buffer is None:
-            print("No image to save!")
+        # Get the naming prefix, subfolder name, and image count
+        prefix = self.naming_prefix.get().strip()
+        subfolder = self.subfolder_name.get().strip()
+        count = self.image_count.get().strip()
+
+        # Check if the counter value is an integer
+        if not count.isdigit():
+            self.show_popup("Invalid counter value. It must be an integer.")
+            self.revert_button(self.button2, original_text, original_color)
             return
 
-        folder_name = self.subfolder_name.get()
-        save_dir = os.path.join(self.save_directory_path, folder_name)
+        self.count = int(count)
 
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+        # Create the subfolder if it does not exist
+        subfolder_path = os.path.join(self.save_directory_path, subfolder)
+        os.makedirs(subfolder_path, exist_ok=True)
 
-        prefix = self.naming_prefix.get()
-        count_str = self.image_count.get()
-        file_name = f"{prefix}_{count_str}.png"
-        file_path = os.path.join(save_dir, file_name)
-        image_to_save = cv2.cvtColor(self.image_buffer, cv2.COLOR_RGB2BGR)
+        # Save the image with the appropriate naming pattern
+        if prefix:
+            filename = f"{prefix}_image{self.count}.jpg"
+        else:
+            filename = f"image_{self.count}.jpg"
 
-        cv2.imwrite(file_path, image_to_save)
-        print(f"Image saved at: {file_path}")
-
+        # Save the image and update the image count
+        file_path = os.path.join(subfolder_path, filename)
+        cv2.imwrite(file_path, self.image_buffer)
+        print(f"Saved image {self.count} as {filename}")
         self.count += 1
-        self.image_count.set(str(self.count))
+
+        # Update the image count label and reset the image buffer
         self.image_count_label.config(text=f"Images Saved: {self.count - 1}")
-        self.revert_button(self.button2, original_text, original_color)
+        self.image_count.set(str(self.count))
+        self.image_buffer = None
+        self.show_popup(f"Image saved as {filename}")
+
+        # Revert the button style after 0.2seconds
+        self.root.after(2000, lambda: self.revert_button(self.button2, original_text, original_color))
+
+    # Show a popup message for a short duration
+    def show_popup(self, message):
+        popup = tk.Toplevel(self.root)
+        popup.title("Notification")
+        label = tk.Label(popup, text=message, padx=10, pady=10)
+        label.pack()
+        popup.after(1000, popup.destroy)
+
+    # Open the save directory in the file explorer
+    def open_explorer(self):
+        if platform == "win32":
+            subprocess.run(["explorer", os.path.abspath(self.save_directory_path)])
+        elif platform == "darwin":
+            subprocess.run(["open", os.path.abspath(self.save_directory_path)])
+        elif platform.startswith("linux"):
+            subprocess.run(["xdg-open", os.path.abspath(self.save_directory_path)])
 
 
+# Function to properly close the camera when the application is closed
+def on_closing():
+    print("Closing application...")
+    print(f"Before closing cameras, total threads number: {threading.active_count()}")
+    for frame in app.frame_list:
+        Camera_off(frame)
+
+    system.destroy_device()
+    print(f"After closing cameras, total threads number: {threading.active_count()}")
+    app.root.destroy()
+
+
+# Example usage
 if __name__ == "__main__":
+    print("Starting application...")
     root = tk.Tk()
-    root.geometry("1200x800")
-    root.title("Image Saver App")
     app = ImageSaverApp(root, save_directory_path, Set_exposure)
+    root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()
