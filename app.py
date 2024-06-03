@@ -74,7 +74,6 @@ class ImageSaverApp:
         self.save_directory_path = save_directory_path
         self.Set_exposure = Set_exposure
         self.image_buffer = None
-        self.reloading_event = threading.Event()
         self.camera_init()
 
         # Initialize custom naming pattern variables
@@ -193,22 +192,20 @@ class ImageSaverApp:
         for frame in self.frame_list:
             frame.startProcess()
 
+        self.view_save_thread = threading.Thread(target=self.view_save_loop, args=())
+        self.view_save_thread.daemon = True
+        self.view_save_thread.start()
+
         self.button3 = tk.Button(root, text="Reload Config", command=self.reload_config, height=2, width=20)
         self.button3.grid(row=6, column=1, padx=10, pady=10, sticky="ew")
 
-        self.view_save_thread = threading.Thread(target=self.view_save_loop, daemon=True)
-        # self.view_save_thread.daemon = True
-        self.view_save_thread.start()
-
     def reload_config(self):
-        original_text, original_color = self.button_click(self.button3, display_text="Reloading Config...")
-        safe_print("Reloading Config. Shutting down Cameras temporarily.")
-        self.reloading_event.set()
-
         combined_images = np.zeros((2 * (h + 2 * border_size), 2 * (w + 2 * border_size), 3), dtype=np.uint8)
         view_image = cv2.resize(combined_images, (0, 0), fx=0.2, fy=0.2)
         self.update_image_grid(view_image)
 
+        original_text, original_color = self.button_click(self.button3, display_text="Reloading Config...")
+        safe_print("Reloading Config. Shutting down Cameras temporarily.")
         for frame in app.frame_list:
             Camera_off(frame)
         system.destroy_device()
@@ -221,7 +218,6 @@ class ImageSaverApp:
         for frame in self.frame_list:
             frame.startProcess()
 
-        self.reloading_event.clear()
         self.root.after(2000, lambda: self.revert_button(self.button3, original_text, original_color))
 
     def view_save_loop(self):
@@ -230,7 +226,6 @@ class ImageSaverApp:
             for index, frame in enumerate(self.frame_list):
                 img_array = frame.read()
                 buffer_list.append(img_array)
-
             self.view_image(buffer_list)
 
     def update_image_grid(self, view_image):

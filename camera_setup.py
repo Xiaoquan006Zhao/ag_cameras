@@ -125,7 +125,6 @@ def Camera_On(Set_exposure, which_camera, device):
             # PTPSyncFrameRate
             ptp_sync_frame_rate = device.nodemap.get_node("PTPSyncFrameRate")
             ptp_sync_frame_rate.value = 1.0
-            print(f"ptp_sync_frame_rate: {get_node_value(device.nodemap, 'PTPSyncFrameRate')}")
 
             return self.num_channels
 
