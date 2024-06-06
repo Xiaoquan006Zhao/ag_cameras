@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import filedialog
 import cv2
 import numpy as np
 import threading
@@ -12,6 +13,7 @@ from PIL import Image, ImageTk
 from camera_setup import create_devices_with_tries, Camera_On, Camera_off
 from arena_api.system import system
 import time
+from utils import *
 
 # Load calibration data
 mapx = mapy = None
@@ -35,7 +37,8 @@ def load_config(config_file_path="config.yaml"):
     with open(config_file_path, "r") as yaml_file:
         config = yaml.safe_load(yaml_file)
 
-    save_directory_path = config["save_directory_path"]
+    save_directory_path = config.get("save_directory_path", "images/")
+    os.makedirs(save_directory_path, exist_ok=True)
     Set_exposure = config["Set_exposure"]
     MAC_list = config["MAC_list"]
     border_size = config.get("border_size", 10)  # Default value of 10
@@ -72,16 +75,24 @@ class ImageSaverApp:
     def __init__(self, root, save_directory_path, Set_exposure):
         start_time = time.time()
         self.root = root
-        self.count = 1
+        self.count = 0
         self.save_directory_path = save_directory_path
         self.Set_exposure = Set_exposure
         self.image_buffer = None
         self.camera_init()
 
         # Initialize custom naming pattern variables
-        self.naming_prefix = tk.StringVar()
+        self.field = tk.StringVar()
+        self.variety = tk.StringVar()
+        self.population = tk.StringVar()
+        self.treatment = tk.StringVar()
         self.image_count = tk.StringVar(value=str(self.count))
-        self.subfolder_name = tk.StringVar()
+
+        # Bind reset counter function to changes in input fields
+        self.field.trace_add("write", self.reset_counter)
+        self.variety.trace_add("write", self.reset_counter)
+        self.population.trace_add("write", self.reset_counter)
+        self.treatment.trace_add("write", self.reset_counter)
 
         # Main area for image
         self.main_frame = tk.Frame(root, height=300, width=500, bg="lightgreen")
@@ -93,35 +104,49 @@ class ImageSaverApp:
         self.img_label.pack(fill="both", expand=True)
 
         # Buttons and inputs
-        self.subfolder_label = tk.Label(root, text="Subfolder Name:")
-        self.subfolder_label.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+        self.field_label = tk.Label(root, text="Field:")
+        self.field_label.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
 
-        self.subfolder_entry = tk.Entry(root, textvariable=self.subfolder_name, width=20)
-        self.subfolder_entry.grid(row=0, column=2, padx=10, pady=10, sticky="ew")
+        self.field_entry = tk.Entry(root, textvariable=self.field, width=20)
+        self.field_entry.grid(row=0, column=2, padx=10, pady=10, sticky="ew")
 
-        self.prefix_label = tk.Label(root, text="Naming Prefix:")
-        self.prefix_label.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
+        self.variety_label = tk.Label(root, text="Variety:")
+        self.variety_label.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
 
-        self.prefix_entry = tk.Entry(root, textvariable=self.naming_prefix, width=20)
-        self.prefix_entry.grid(row=1, column=2, padx=10, pady=10, sticky="ew")
+        self.variety_entry = tk.Entry(root, textvariable=self.variety, width=20)
+        self.variety_entry.grid(row=1, column=2, padx=10, pady=10, sticky="ew")
+
+        self.population_label = tk.Label(root, text="Population:")
+        self.population_label.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
+
+        self.population_entry = tk.Entry(root, textvariable=self.population, width=20)
+        self.population_entry.grid(row=2, column=2, padx=10, pady=10, sticky="ew")
+
+        self.treatment_label = tk.Label(root, text="Treatment:")
+        self.treatment_label.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
+
+        self.treatment_entry = tk.Entry(root, textvariable=self.treatment, width=20)
+        self.treatment_entry.grid(row=3, column=2, padx=10, pady=10, sticky="ew")
 
         self.count_label = tk.Label(root, text="Image Counter:")
-        self.count_label.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
+        self.count_label.grid(row=4, column=1, padx=10, pady=10, sticky="ew")
 
         self.count_entry = tk.Entry(root, textvariable=self.image_count, width=20)
-        self.count_entry.grid(row=2, column=2, padx=10, pady=10, sticky="ew")
-
-        self.image_count_label = tk.Label(root, text=f"Images Saved: {self.count - 1}")
-        self.image_count_label.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
+        self.count_entry.grid(row=4, column=2, padx=10, pady=10, sticky="ew")
 
         self.button1 = tk.Button(root, text="Open Explorer", command=self.open_explorer, height=2, width=20)
-        self.button1.grid(row=4, column=1, padx=10, pady=10, sticky="ew")
+        self.button1.grid(row=5, column=1, padx=10, pady=10, sticky="ew")
 
         self.button2 = tk.Button(root, text="Save", command=self.save_image, height=2, width=20)
-        self.button2.grid(row=5, column=1, padx=10, pady=10, sticky="ew")
+        self.button2.grid(row=6, column=1, padx=10, pady=10, sticky="ew")
 
         self.button3 = tk.Button(root, text="Start", command=self.start_process, height=2, width=20)
-        self.button3.grid(row=6, column=1, padx=10, pady=10, sticky="ew")
+        self.button3.grid(row=7, column=1, padx=10, pady=10, sticky="ew")
+
+        self.button4 = tk.Button(
+            root, text="Change Save Directory", command=self.select_save_directory, height=2, width=20
+        )
+        self.button4.grid(row=8, column=1, padx=10, pady=10, sticky="ew")
 
         end_time = time.time()
         print(f"APP initialization took {end_time - start_time} seconds.")
@@ -188,10 +213,19 @@ class ImageSaverApp:
 
         return original_text, original_color
 
+    def select_save_directory(self):
+        global save_directory_path
+        save_directory_path = filedialog.askdirectory(title="Select Save Directory", initialdir=os.getcwd())
+        self.save_directory_path = save_directory_path
+
     # Function to revert button style to original text and color
     def revert_button(self, button, original_text, original_color):
         button.config(state="normal", text=original_text, bg=original_color)
         self.root.update_idletasks()
+
+    def reset_counter(self, *args):
+        self.count = 0
+        self.image_count.set(str(self.count))
 
     def start_process(self):
         # Change button style to show that the process has started
@@ -206,7 +240,7 @@ class ImageSaverApp:
         self.view_save_thread.start()
 
         self.button3 = tk.Button(root, text="Reload Config", command=self.reload_config, height=2, width=20)
-        self.button3.grid(row=6, column=1, padx=10, pady=10, sticky="ew")
+        self.button3.grid(row=7, column=1, padx=10, pady=10, sticky="ew")
 
     def reload_config(self):
         start_time = time.time()
@@ -296,40 +330,41 @@ class ImageSaverApp:
         assert self.image_buffer is not None, "No image to save"
         original_text, original_color = self.button_click(self.button2, display_text="Saving...")
 
-        # Get the naming prefix, subfolder name, and image count
-        prefix = self.naming_prefix.get().strip()
-        subfolder = self.subfolder_name.get().strip()
-        count = self.image_count.get().strip()
+        experiment = [
+            self.field.get(),
+            self.variety.get(),
+            self.population.get(),
+            self.treatment.get(),
+            self.image_count.get(),
+        ]
 
         # Check if the counter value is an integer
-        if not count.isdigit():
-            self.show_popup("Invalid counter value. It must be an integer.")
-            self.revert_button(self.button2, original_text, original_color)
-            return
+        for i, d in enumerate(experiment):
+            if not is_digit(app, self.button2, d, original_text, original_color):
+                return
+            else:
+                experiment[i] = int(d)
 
-        self.count = int(count)
+        subfolder_path = (
+            f"field_{experiment[0]}_varity_{experiment[1]}_population_{experiment[2]}_treatment_{experiment[3]}/"
+        )
 
+        print(subfolder_path)
         # Create the subfolder if it does not exist
-        subfolder_path = os.path.join(self.save_directory_path, subfolder)
+        subfolder_path = os.path.join(self.save_directory_path, subfolder_path)
         os.makedirs(subfolder_path, exist_ok=True)
 
-        # Save the image with the appropriate naming pattern
-        if prefix:
-            filename = f"{prefix}_image{self.count}.jpg"
-        else:
-            filename = f"image_{self.count}.jpg"
+        filename = f"image_{experiment[4]}.jpg"
 
         # Save the image and update the image count
         file_path = os.path.join(subfolder_path, filename)
         cv2.imwrite(file_path, self.image_buffer)
-        print(f"Saved image {self.count} as {filename}")
-        self.count += 1
+        print(f"Saved image {experiment[4]} as {filename}")
 
         # Update the image count label and reset the image buffer
-        self.image_count_label.config(text=f"Images Saved: {self.count - 1}")
-        self.image_count.set(str(self.count))
+        self.image_count.set(str(experiment[4] + 1))
         self.image_buffer = None
-        self.show_popup(f"Image saved as {filename}")
+        self.show_popup(f"Image saved as {file_path}")
 
         # Revert the button style after 0.2seconds
         self.root.after(2000, lambda: self.revert_button(self.button2, original_text, original_color))
