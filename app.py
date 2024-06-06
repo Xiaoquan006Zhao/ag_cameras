@@ -11,6 +11,7 @@ from sys import platform
 from PIL import Image, ImageTk
 from camera_setup import create_devices_with_tries, Camera_On, Camera_off
 from arena_api.system import system
+import time
 
 # Load calibration data
 mapx = mapy = None
@@ -69,6 +70,7 @@ def int_to_mac(mac_value):
 class ImageSaverApp:
 
     def __init__(self, root, save_directory_path, Set_exposure):
+        start_time = time.time()
         self.root = root
         self.count = 1
         self.save_directory_path = save_directory_path
@@ -121,8 +123,12 @@ class ImageSaverApp:
         self.button3 = tk.Button(root, text="Start", command=self.start_process, height=2, width=20)
         self.button3.grid(row=6, column=1, padx=10, pady=10, sticky="ew")
 
+        end_time = time.time()
+        print(f"APP initialization took {end_time - start_time} seconds.")
+
     def camera_init(self):
         # Initialize the cameras, their thread events, and main app thread condition
+        start_time = time.time()
         self.frame_list = [None] * len(MAC_list)
         devices = create_devices_with_tries()
 
@@ -170,6 +176,9 @@ class ImageSaverApp:
         for frame in self.frame_list:
             print(f"Creating camera_{frame.which_camera} (Status: {frame.device.nodemap.get_node('PtpStatus').value})")
 
+        end_time = time.time()
+        print(f"All cameras initialization took {end_time - start_time} seconds.")
+
     # Function to handle button click event style and return the original text and color
     def button_click(self, button, display_text, bg_color="red"):
         original_text = button.cget("text")
@@ -200,6 +209,7 @@ class ImageSaverApp:
         self.button3.grid(row=6, column=1, padx=10, pady=10, sticky="ew")
 
     def reload_config(self):
+        start_time = time.time()
         combined_images = np.zeros((2 * (h + 2 * border_size), 2 * (w + 2 * border_size), 3), dtype=np.uint8)
         view_image = cv2.resize(combined_images, (0, 0), fx=0.2, fy=0.2)
         self.update_image_grid(view_image)
@@ -219,13 +229,19 @@ class ImageSaverApp:
 
         self.root.after(2000, lambda: self.revert_button(self.button3, original_text, original_color))
 
+        end_time = time.time()
+        print(f"Reloading config took {end_time - start_time} seconds.")
+
     def view_save_loop(self):
         while True:
+            start_time = time.time()
             buffer_list = []
             for index, frame in enumerate(self.frame_list):
                 img_array = frame.read()
                 buffer_list.append(img_array)
             self.view_image(buffer_list)
+            end_time = time.time()
+            print(f"New Frame update took {end_time - start_time} seconds.")
 
     def update_image_grid(self, view_image):
         # Convert to PIL image and then to PhotoImage
@@ -338,6 +354,8 @@ class ImageSaverApp:
 
 # Function to properly close the camera when the application is closed
 def on_closing(destory_root=True):
+    start_time = time.time()
+
     print("Closing application...")
     print(f"Before closing cameras, total threads number: {threading.active_count()}")
     closing_threads = []
@@ -354,6 +372,9 @@ def on_closing(destory_root=True):
 
     if destory_root:
         app.root.destroy()
+
+    end_time = time.time()
+    print(f"APP termination took {end_time - start_time} seconds.")
 
 
 # Example usage

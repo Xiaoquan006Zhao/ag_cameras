@@ -1,6 +1,5 @@
 import threading
 import time
-import queue
 import ctypes
 import numpy as np
 import cv2
@@ -11,6 +10,7 @@ from arena_api.buffer import BufferFactory
 from arena_api.__future__.save import Writer
 from multiprocessing import Value
 import json
+import time
 
 width1 = 2048
 height1 = 1536
@@ -39,6 +39,7 @@ def get_node_value(nodemap, node):
 
 
 def create_devices_with_tries():
+    start_time = time.time()
     with threading.Lock():
         tries = 0
         tries_max = 6
@@ -56,6 +57,8 @@ def create_devices_with_tries():
                 tries += 1
             else:
                 safe_print(f"Created {len(devices)} device(s)")
+                end_time = time.time()
+                print(f"Locating Device(s) took {end_time - start_time} seconds.")
                 return devices
         else:
             raise Exception(f"No device found! Please connect a device and run " f"the example again.")
@@ -64,6 +67,7 @@ def create_devices_with_tries():
 def Camera_On(Set_exposure, which_camera, device):
     class Video_Capture:
         def __init__(self, Set_exposure, which_camera, device):
+            start_time = time.time()
             self.frame_holder = None
             self.device = device
             self.which_camera = which_camera
@@ -72,6 +76,8 @@ def Camera_On(Set_exposure, which_camera, device):
             self.ready_to_stop = threading.Event()
             self.stopped = threading.Event()
             self.setup(Set_exposure)
+            end_time = time.time()
+            print(f"Camera_{which_camera} initialization took {end_time - start_time} seconds.")
 
         # Start stream in a separate thread
         def startProcess(self):
@@ -109,7 +115,7 @@ def Camera_On(Set_exposure, which_camera, device):
                 set_node_value(device.nodemap, "PtpSlaveOnly", True)
 
             # Set Packet Delay and Transmission Delay based on device index
-            packet_delay = 300000
+            packet_delay = 240000
             # packet_delay = 80000
             transmission_delay = 0 if i == 0 else 80000 * i
             set_node_value(device.nodemap, "GevSCPD", packet_delay)
@@ -141,6 +147,7 @@ def Camera_On(Set_exposure, which_camera, device):
                         if self.stopped.is_set():
                             break
 
+                        start_time = time.time()
                         buffer = self.device.get_buffer()
 
                         # Convert buffer data to a numpy array
@@ -164,13 +171,17 @@ def Camera_On(Set_exposure, which_camera, device):
                         # Reset the memory usgae of the buffer
                         BufferFactory.destroy(item)
                         self.device.requeue_buffer(buffer)
+                        end_time = time.time()
+                        print(f"Camera_{which_camera} frame update took {end_time - start_time} seconds.")
                 except Exception as e:
                     print(f"Some error happened! Trying to reopen camera_{self.which_camera}...")
                     traceback.print_exc()
                     time.sleep(3)
 
         def read(self):
-            return self.frame_holder
+            return_holder = self.frame_holder
+            # self.frame_holder = None
+            return return_holder
 
         def stop_stream(self):
             if self.working_properly:
@@ -189,7 +200,7 @@ def Camera_On(Set_exposure, which_camera, device):
 
 
 def Camera_off(frame):
-    # ts = threading.Thread(target=frame.stop_stream, args=())
-    # ts.daemon = True
-    # ts.start()
+    start_time = time.time()
     frame.stop_stream()
+    end_time = time.time()
+    print(f"Camera_{frame.which_camera} termination took {end_time - start_time} seconds.")
