@@ -389,7 +389,7 @@ class ImageSaverApp:
         popup.title("Notification")
         label = tk.Label(popup, text=message, padx=10, pady=10)
         label.pack()
-        popup.after(10000, popup.destroy)
+        popup.after(1000, popup.destroy)
 
     # Open the save directory in the file explorer
     def open_explorer(self):
