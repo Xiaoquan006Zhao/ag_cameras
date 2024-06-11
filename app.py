@@ -164,6 +164,7 @@ class ImageSaverApp:
 
         end_time = time.time()
         print(f"APP initialization took {end_time - start_time} seconds.")
+        subprocess.Popen("osk", shell=True)
 
     def camera_init(self):
         # Initialize the cameras, their thread events, and main app thread condition
