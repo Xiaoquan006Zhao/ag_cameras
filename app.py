@@ -103,6 +103,16 @@ class ImageSaverApp:
         self.img_label = tk.Label(self.main_frame)
         self.img_label.pack(fill="both", expand=True)
 
+        # Load and display the logo image
+        self.logo_image = Image.open("logo.png")
+        original_width, original_height = self.logo_image.size
+        new_width = int(original_width * 0.15)
+        new_height = int(original_height * 0.15)
+        self.logo_image = self.logo_image.resize((new_width, new_height))
+        self.logo_image = ImageTk.PhotoImage(self.logo_image)
+        self.logo_label = tk.Label(root, image=self.logo_image)
+        self.logo_label.grid(row=6, column=0, columnspan=2, padx=(30, 10), pady=5, sticky="w")
+
         # Buttons and inputs
         self.field_label = tk.Label(root, text="Field:")
         self.field_label.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
@@ -147,6 +157,10 @@ class ImageSaverApp:
             root, text="Change Save Directory", command=self.select_save_directory, height=2, width=20
         )
         self.button4.grid(row=8, column=1, padx=10, pady=10, sticky="ew")
+
+        combined_images = np.zeros((2 * (h + 2 * border_size), 2 * (w + 2 * border_size), 3), dtype=np.uint8)
+        view_image = cv2.resize(combined_images, (0, 0), fx=0.2, fy=0.2)
+        self.update_image_grid(view_image)
 
         end_time = time.time()
         print(f"APP initialization took {end_time - start_time} seconds.")
@@ -375,7 +389,7 @@ class ImageSaverApp:
         popup.title("Notification")
         label = tk.Label(popup, text=message, padx=10, pady=10)
         label.pack()
-        popup.after(1000, popup.destroy)
+        popup.after(10000, popup.destroy)
 
     # Open the save directory in the file explorer
     def open_explorer(self):
