@@ -113,69 +113,69 @@ class ImageSaverApp:
         self.logo_image = self.logo_image.resize((new_width, new_height))
         self.logo_image = ImageTk.PhotoImage(self.logo_image)
         self.logo_label = tk.Label(root, image=self.logo_image)
-        self.logo_label.grid(row=7, column=0, columnspan=2, padx=(30, 10), pady=5, sticky="w")
+        self.logo_label.grid(row=7, column=0, columnspan=2, padx=(30, 10), pady=0, sticky="w")
 
         # Buttons and inputs
-        self.field_label = tk.Label(root, text="Field:")
-        self.field_label.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+        self.field_label = tk.Label(root, text="Field:", anchor="w")
+        self.field_label.grid(row=0, column=1, padx=(0, 10), pady=0, sticky="ew")
 
-        self.field_entry = tk.Entry(root, textvariable=self.field, width=20)
-        self.field_entry.grid(row=0, column=2, padx=10, pady=10, sticky="ew")
+        self.field_entry = tk.Entry(root, textvariable=self.field, width=18)
+        self.field_entry.grid(row=0, column=2, padx=(0, 10), pady=0, sticky="ew")
 
-        self.variety_label = tk.Label(root, text="Variety:")
-        self.variety_label.grid(row=0, column=3, padx=10, pady=10, sticky="ew")
+        self.variety_label = tk.Label(root, text="Variety:", anchor="w")
+        self.variety_label.grid(row=0, column=3, padx=(0, 10), pady=0, sticky="ew")
 
-        self.variety_entry = tk.Entry(root, textvariable=self.variety, width=20)
-        self.variety_entry.grid(row=0, column=4, padx=10, pady=10, sticky="ew")
+        self.variety_entry = tk.Entry(root, textvariable=self.variety, width=18)
+        self.variety_entry.grid(row=0, column=4, padx=(0, 10), pady=0, sticky="ew")
 
-        self.population_label = tk.Label(root, text="Population:")
-        self.population_label.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
+        self.population_label = tk.Label(root, text="Population:", anchor="w")
+        self.population_label.grid(row=1, column=1, padx=(0, 10), pady=0, sticky="ew")
 
-        self.population_entry = tk.Entry(root, textvariable=self.population, width=20)
-        self.population_entry.grid(row=1, column=2, padx=10, pady=10, sticky="ew")
+        self.population_entry = tk.Entry(root, textvariable=self.population, width=18)
+        self.population_entry.grid(row=1, column=2, padx=(0, 10), pady=0, sticky="ew")
 
-        self.treatment_label = tk.Label(root, text="Treatment:")
-        self.treatment_label.grid(row=1, column=3, padx=10, pady=10, sticky="ew")
+        self.treatment_label = tk.Label(root, text="Treatment:", anchor="w")
+        self.treatment_label.grid(row=1, column=3, padx=(0, 10), pady=0, sticky="ew")
 
-        self.treatment_entry = tk.Entry(root, textvariable=self.treatment, width=20)
-        self.treatment_entry.grid(row=1, column=4, padx=10, pady=10, sticky="ew")
+        self.treatment_entry = tk.Entry(root, textvariable=self.treatment, width=18)
+        self.treatment_entry.grid(row=1, column=4, padx=(0, 10), pady=0, sticky="ew")
 
-        self.count_label = tk.Label(root, text="Image Counter:")
-        self.count_label.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
+        self.count_label = tk.Label(root, text="Image Counter:", anchor="w")
+        self.count_label.grid(row=2, column=1, padx=(0, 10), pady=0, sticky="ew")
 
-        self.count_entry = tk.Entry(root, textvariable=self.image_count, width=20)
-        self.count_entry.grid(row=2, column=2, padx=10, pady=10, sticky="ew")
+        self.count_entry = tk.Entry(root, textvariable=self.image_count, width=18)
+        self.count_entry.grid(row=2, column=2, padx=(0, 10), pady=0, sticky="ew")
 
-        self.exposure_label = tk.Label(root, text="Exposure:")
-        self.exposure_label.grid(row=2, column=3, padx=10, pady=10, sticky="ew")
+        self.exposure_label = tk.Label(root, text="Exposure:", anchor="w")
+        self.exposure_label.grid(row=2, column=3, padx=(0, 10), pady=0, sticky="ew")
 
-        self.exposure_entry = tk.Entry(root, textvariable=self.exposure, width=20)
-        self.exposure_entry.grid(row=2, column=4, padx=10, pady=10, sticky="ew")
+        self.exposure_entry = tk.Entry(root, textvariable=self.exposure, width=18)
+        self.exposure_entry.grid(row=2, column=4, padx=(0, 10), pady=0, sticky="ew")
 
-        self.comment_label = tk.Label(root, text="Comment:")
-        self.comment_label.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
+        self.comment_label = tk.Label(root, text="Comment:", anchor="w")
+        self.comment_label.grid(row=3, column=1, padx=(0, 10), pady=0, sticky="ew")
 
-        self.comment_entry = tk.Text(root, width=40, height=10)
-        self.comment_entry.grid(row=3, column=2, padx=10, pady=10, sticky="ew")
+        self.comment_entry = tk.Text(root, width=18, height=10)
+        self.comment_entry.grid(row=3, column=2, columnspan=3, padx=(0, 10), pady=0, sticky="ew")
 
-        self.button1 = tk.Button(root, text="Open Explorer", command=self.open_explorer, height=2, width=20)
-        self.button1.grid(row=4, column=1, padx=10, pady=10, sticky="ew")
+        self.button1 = tk.Button(root, text="Open Explorer", command=self.open_explorer, height=2, width=18)
+        self.button1.grid(row=4, column=1, columnspan=2, padx=(0, 10), pady=0, sticky="ew")
 
-        self.button2 = tk.Button(root, text="Save", command=self.save_image, height=2, width=20)
-        self.button2.grid(row=4, column=2, padx=10, pady=10, sticky="ew")
+        self.button2 = tk.Button(root, text="Save", command=self.save_image, height=2, width=18, bg="#90EE90")
+        self.button2.grid(row=4, column=3, columnspan=2, padx=(0, 10), pady=0, sticky="ew")
 
-        self.button3 = tk.Button(root, text="Start", command=self.start_process, height=2, width=20)
-        self.button3.grid(row=5, column=1, padx=10, pady=10, sticky="ew")
+        self.button3 = tk.Button(root, text="Start", command=self.start_process, height=2, width=18)
+        self.button3.grid(row=5, column=1, columnspan=2, padx=(0, 10), pady=0, sticky="ew")
 
         self.button4 = tk.Button(
-            root, text="Change Save Directory", command=self.select_save_directory, height=2, width=20
+            root, text="Change Save Directory", command=self.select_save_directory, height=2, width=18
         )
-        self.button4.grid(row=5, column=2, padx=10, pady=10, sticky="ew")
+        self.button4.grid(row=5, column=3, columnspan=2, padx=(0, 10), pady=0, sticky="ew")
 
         self.clear_comment_button = tk.Button(
-            root, text="Clear Comment", command=self.clear_comment, height=2, width=20
+            root, text="Clear Comment", command=self.clear_comment, height=2, width=18
         )
-        self.clear_comment_button.grid(row=6, column=1, columnspan=2, padx=10, pady=10, sticky="ew")
+        self.clear_comment_button.grid(row=6, column=1, columnspan=2, padx=(0, 10), pady=0, sticky="ew")
 
         combined_images = np.zeros((2 * (h + 2 * border_size), 2 * (w + 2 * border_size), 3), dtype=np.uint8)
         view_image = cv2.resize(combined_images, (0, 0), fx=0.2, fy=0.2)
@@ -183,7 +183,7 @@ class ImageSaverApp:
 
         end_time = time.time()
         print(f"APP initialization took {end_time - start_time} seconds.")
-        subprocess.Popen("osk", shell=True)
+        # subprocess.Popen("osk", shell=True)
 
     def camera_init(self):
         # Initialize the cameras, their thread events, and main app thread condition
@@ -273,8 +273,8 @@ class ImageSaverApp:
         self.view_save_thread.daemon = True
         self.view_save_thread.start()
 
-        self.button3 = tk.Button(root, text="Reload Config", command=self.reload_config, height=2, width=20)
-        self.button3.grid(row=5, column=1, padx=10, pady=10, sticky="ew")
+        self.button3 = tk.Button(root, text="Reload Config", command=self.reload_config, height=2, width=18)
+        self.button3.grid(row=5, column=1, columnspan=2, padx=(0, 10), pady=0, sticky="ew")
 
     def reload_config(self):
         start_time = time.time()
@@ -432,7 +432,8 @@ class ImageSaverApp:
     def show_popup(self, message):
         popup = tk.Toplevel(self.root)
         popup.title("Notification")
-        label = tk.Label(popup, text=message, padx=10, pady=10)
+        label = tk.Label(popup, text=message, padx=0, pady=10)
+
         label.pack()
         popup.after(1000, popup.destroy)
 
