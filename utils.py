@@ -1,6 +1,8 @@
 def preprocess_string(text):
+    print(text)
     text = text.strip()
     text = text.lower()
+    print(text)
     return text
 
 

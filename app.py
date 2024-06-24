@@ -87,6 +87,7 @@ class ImageSaverApp:
         self.population = tk.StringVar()
         self.treatment = tk.StringVar()
         self.image_count = tk.StringVar(value=str(self.count))
+        self.comment = tk.StringVar()
 
         # Bind reset counter function to changes in input fields
         self.field.trace_add("write", self.reset_counter)
@@ -96,7 +97,7 @@ class ImageSaverApp:
 
         # Main area for image
         self.main_frame = tk.Frame(root, height=300, width=500, bg="lightgreen")
-        self.main_frame.grid(row=0, column=0, rowspan=6, padx=20, pady=20, sticky="nsew")
+        self.main_frame.grid(row=0, column=0, rowspan=7, padx=20, pady=20, sticky="nsew")
         self.main_frame.grid_propagate(False)
 
         # Initial image placeholder
@@ -111,7 +112,7 @@ class ImageSaverApp:
         self.logo_image = self.logo_image.resize((new_width, new_height))
         self.logo_image = ImageTk.PhotoImage(self.logo_image)
         self.logo_label = tk.Label(root, image=self.logo_image)
-        self.logo_label.grid(row=6, column=0, columnspan=2, padx=(30, 10), pady=5, sticky="w")
+        self.logo_label.grid(row=7, column=0, columnspan=2, padx=(30, 10), pady=5, sticky="w")
 
         # Buttons and inputs
         self.field_label = tk.Label(root, text="Field:")
@@ -121,42 +122,53 @@ class ImageSaverApp:
         self.field_entry.grid(row=0, column=2, padx=10, pady=10, sticky="ew")
 
         self.variety_label = tk.Label(root, text="Variety:")
-        self.variety_label.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
+        self.variety_label.grid(row=0, column=3, padx=10, pady=10, sticky="ew")
 
         self.variety_entry = tk.Entry(root, textvariable=self.variety, width=20)
-        self.variety_entry.grid(row=1, column=2, padx=10, pady=10, sticky="ew")
+        self.variety_entry.grid(row=0, column=4, padx=10, pady=10, sticky="ew")
 
         self.population_label = tk.Label(root, text="Population:")
-        self.population_label.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
+        self.population_label.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
 
         self.population_entry = tk.Entry(root, textvariable=self.population, width=20)
-        self.population_entry.grid(row=2, column=2, padx=10, pady=10, sticky="ew")
+        self.population_entry.grid(row=1, column=2, padx=10, pady=10, sticky="ew")
 
         self.treatment_label = tk.Label(root, text="Treatment:")
-        self.treatment_label.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
+        self.treatment_label.grid(row=1, column=3, padx=10, pady=10, sticky="ew")
 
         self.treatment_entry = tk.Entry(root, textvariable=self.treatment, width=20)
-        self.treatment_entry.grid(row=3, column=2, padx=10, pady=10, sticky="ew")
+        self.treatment_entry.grid(row=1, column=4, padx=10, pady=10, sticky="ew")
+
+        self.comment_label = tk.Label(root, text="Comment:")
+        self.comment_label.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
+
+        self.comment_entry = tk.Text(root, width=40, height=10)
+        self.comment_entry.grid(row=2, column=2, padx=10, pady=10, sticky="ew")
 
         self.count_label = tk.Label(root, text="Image Counter:")
-        self.count_label.grid(row=4, column=1, padx=10, pady=10, sticky="ew")
+        self.count_label.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
 
         self.count_entry = tk.Entry(root, textvariable=self.image_count, width=20)
-        self.count_entry.grid(row=4, column=2, padx=10, pady=10, sticky="ew")
+        self.count_entry.grid(row=3, column=2, padx=10, pady=10, sticky="ew")
 
         self.button1 = tk.Button(root, text="Open Explorer", command=self.open_explorer, height=2, width=20)
-        self.button1.grid(row=5, column=1, padx=10, pady=10, sticky="ew")
+        self.button1.grid(row=4, column=1, padx=10, pady=10, sticky="ew")
 
         self.button2 = tk.Button(root, text="Save", command=self.save_image, height=2, width=20)
-        self.button2.grid(row=6, column=1, padx=10, pady=10, sticky="ew")
+        self.button2.grid(row=4, column=2, padx=10, pady=10, sticky="ew")
 
         self.button3 = tk.Button(root, text="Start", command=self.start_process, height=2, width=20)
-        self.button3.grid(row=7, column=1, padx=10, pady=10, sticky="ew")
+        self.button3.grid(row=5, column=1, padx=10, pady=10, sticky="ew")
 
         self.button4 = tk.Button(
             root, text="Change Save Directory", command=self.select_save_directory, height=2, width=20
         )
-        self.button4.grid(row=8, column=1, padx=10, pady=10, sticky="ew")
+        self.button4.grid(row=5, column=2, padx=10, pady=10, sticky="ew")
+
+        self.clear_comment_button = tk.Button(
+            root, text="Clear Comment", command=self.clear_comment, height=2, width=20
+        )
+        self.clear_comment_button.grid(row=6, column=1, columnspan=2, padx=10, pady=10, sticky="ew")
 
         combined_images = np.zeros((2 * (h + 2 * border_size), 2 * (w + 2 * border_size), 3), dtype=np.uint8)
         view_image = cv2.resize(combined_images, (0, 0), fx=0.2, fy=0.2)
@@ -255,7 +267,7 @@ class ImageSaverApp:
         self.view_save_thread.start()
 
         self.button3 = tk.Button(root, text="Reload Config", command=self.reload_config, height=2, width=20)
-        self.button3.grid(row=7, column=1, padx=10, pady=10, sticky="ew")
+        self.button3.grid(row=5, column=1, padx=10, pady=10, sticky="ew")
 
     def reload_config(self):
         start_time = time.time()
@@ -369,20 +381,33 @@ class ImageSaverApp:
         subfolder_path = os.path.join(self.save_directory_path, subfolder_path)
         os.makedirs(subfolder_path, exist_ok=True)
 
-        filename = f"image_{experiment[4]}.jpg"
+        image_filename = f"image_{experiment[4]}.jpg"
+        comment_filename = f"image_{experiment[4]}.txt"
 
         # Save the image and update the image count
-        file_path = os.path.join(subfolder_path, filename)
-        cv2.imwrite(file_path, self.image_buffer)
-        print(f"Saved image {experiment[4]} as {filename}")
+        image_path = os.path.join(subfolder_path, image_filename)
+        comment_path = os.path.join(subfolder_path, comment_filename)
+        cv2.imwrite(image_path, self.image_buffer)
+        print(f"Saved image {experiment[4]} as {image_path}")
 
         # Update the image count label and reset the image buffer
         self.image_count.set(str(experiment[4] + 1))
         self.image_buffer = None
-        self.show_popup(f"Image saved as {file_path}")
+
+        comment = self.comment_entry.get("1.0", tk.END).strip()
+        if comment != "":
+            with open(comment_path, "w") as f:
+                f.write(comment)
+            self.show_popup(f"Image and comment saved as {image_path}")
+
+        else:
+            self.show_popup(f"Image saved as {image_path}")
 
         # Revert the button style after 0.2seconds
         self.root.after(2000, lambda: self.revert_button(self.button2, original_text, original_color))
+
+    def clear_comment(self):
+        self.comment_entry.delete("1.0", tk.END)  # Deletes all text from the first character to the end
 
     # Show a popup message for a short duration
     def show_popup(self, message):
