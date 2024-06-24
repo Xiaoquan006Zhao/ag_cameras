@@ -86,6 +86,7 @@ class ImageSaverApp:
         self.variety = tk.StringVar()
         self.population = tk.StringVar()
         self.treatment = tk.StringVar()
+        self.exposure = tk.StringVar()
         self.image_count = tk.StringVar(value=str(self.count))
         self.comment = tk.StringVar()
 
@@ -139,17 +140,23 @@ class ImageSaverApp:
         self.treatment_entry = tk.Entry(root, textvariable=self.treatment, width=20)
         self.treatment_entry.grid(row=1, column=4, padx=10, pady=10, sticky="ew")
 
-        self.comment_label = tk.Label(root, text="Comment:")
-        self.comment_label.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
-
-        self.comment_entry = tk.Text(root, width=40, height=10)
-        self.comment_entry.grid(row=2, column=2, padx=10, pady=10, sticky="ew")
-
         self.count_label = tk.Label(root, text="Image Counter:")
-        self.count_label.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
+        self.count_label.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
 
         self.count_entry = tk.Entry(root, textvariable=self.image_count, width=20)
-        self.count_entry.grid(row=3, column=2, padx=10, pady=10, sticky="ew")
+        self.count_entry.grid(row=2, column=2, padx=10, pady=10, sticky="ew")
+
+        self.exposure_label = tk.Label(root, text="Exposure:")
+        self.exposure_label.grid(row=2, column=3, padx=10, pady=10, sticky="ew")
+
+        self.exposure_entry = tk.Entry(root, textvariable=self.exposure, width=20)
+        self.exposure_entry.grid(row=2, column=4, padx=10, pady=10, sticky="ew")
+
+        self.comment_label = tk.Label(root, text="Comment:")
+        self.comment_label.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
+
+        self.comment_entry = tk.Text(root, width=40, height=10)
+        self.comment_entry.grid(row=3, column=2, padx=10, pady=10, sticky="ew")
 
         self.button1 = tk.Button(root, text="Open Explorer", command=self.open_explorer, height=2, width=20)
         self.button1.grid(row=4, column=1, padx=10, pady=10, sticky="ew")
@@ -278,11 +285,23 @@ class ImageSaverApp:
         original_text, original_color = self.button_click(self.button3, display_text="Reloading Config...")
         safe_print("Reloading Config. Shutting down Cameras temporarily.")
 
+        input_exposure = self.exposure.get().strip()
+        if input_exposure != "":
+            if not is_digit(app, self.button3, input_exposure, original_text, original_color):
+                return
+
         on_closing(destory_root=False)
+
+        # Arena api expects double type for exposure
+        input_exposure = float(input_exposure)
 
         load_config()
         self.save_directory_path = save_directory_path
-        self.Set_exposure = Set_exposure
+        if input_exposure != self.Set_exposure:
+            self.Set_exposure = input_exposure
+        else:
+            self.Set_exposure = Set_exposure
+
         self.camera_init()
 
         for frame in self.frame_list:
