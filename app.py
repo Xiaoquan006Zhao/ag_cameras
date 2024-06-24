@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog
+from tkinter import font
 import cv2
 import numpy as np
 import threading
@@ -183,7 +184,7 @@ class ImageSaverApp:
 
         end_time = time.time()
         print(f"APP initialization took {end_time - start_time} seconds.")
-        # subprocess.Popen("osk", shell=True)
+        subprocess.Popen("osk", shell=True)
 
     def camera_init(self):
         # Initialize the cameras, their thread events, and main app thread condition
@@ -476,6 +477,8 @@ def on_closing(destory_root=True):
 if __name__ == "__main__":
     print("Starting application...")
     root = tk.Tk()
+    default_font = font.nametofont("TkDefaultFont")
+    default_font.configure(size=12)
     app = ImageSaverApp(root, save_directory_path, Set_exposure)
     root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()
