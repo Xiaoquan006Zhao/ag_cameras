@@ -120,61 +120,61 @@ class ImageSaverApp:
         self.field_label = tk.Label(root, text="Field:", anchor="w")
         self.field_label.grid(row=0, column=1, padx=(0, 10), pady=0, sticky="ew")
 
-        self.field_entry = tk.Entry(root, textvariable=self.field, width=18)
+        self.field_entry = tk.Entry(root, textvariable=self.field, width=16)
         self.field_entry.grid(row=0, column=2, padx=(0, 10), pady=0, sticky="ew")
 
         self.variety_label = tk.Label(root, text="Variety:", anchor="w")
         self.variety_label.grid(row=0, column=3, padx=(0, 10), pady=0, sticky="ew")
 
-        self.variety_entry = tk.Entry(root, textvariable=self.variety, width=18)
+        self.variety_entry = tk.Entry(root, textvariable=self.variety, width=16)
         self.variety_entry.grid(row=0, column=4, padx=(0, 10), pady=0, sticky="ew")
 
         self.population_label = tk.Label(root, text="Population:", anchor="w")
         self.population_label.grid(row=1, column=1, padx=(0, 10), pady=0, sticky="ew")
 
-        self.population_entry = tk.Entry(root, textvariable=self.population, width=18)
+        self.population_entry = tk.Entry(root, textvariable=self.population, width=16)
         self.population_entry.grid(row=1, column=2, padx=(0, 10), pady=0, sticky="ew")
 
         self.treatment_label = tk.Label(root, text="Treatment:", anchor="w")
         self.treatment_label.grid(row=1, column=3, padx=(0, 10), pady=0, sticky="ew")
 
-        self.treatment_entry = tk.Entry(root, textvariable=self.treatment, width=18)
+        self.treatment_entry = tk.Entry(root, textvariable=self.treatment, width=16)
         self.treatment_entry.grid(row=1, column=4, padx=(0, 10), pady=0, sticky="ew")
 
         self.count_label = tk.Label(root, text="Image Counter:", anchor="w")
         self.count_label.grid(row=2, column=1, padx=(0, 10), pady=0, sticky="ew")
 
-        self.count_entry = tk.Entry(root, textvariable=self.image_count, width=18)
+        self.count_entry = tk.Entry(root, textvariable=self.image_count, width=16)
         self.count_entry.grid(row=2, column=2, padx=(0, 10), pady=0, sticky="ew")
 
         self.exposure_label = tk.Label(root, text="Exposure:", anchor="w")
         self.exposure_label.grid(row=2, column=3, padx=(0, 10), pady=0, sticky="ew")
 
-        self.exposure_entry = tk.Entry(root, textvariable=self.exposure, width=18)
+        self.exposure_entry = tk.Entry(root, textvariable=self.exposure, width=16)
         self.exposure_entry.grid(row=2, column=4, padx=(0, 10), pady=0, sticky="ew")
 
         self.comment_label = tk.Label(root, text="Comment:", anchor="w")
         self.comment_label.grid(row=3, column=1, padx=(0, 10), pady=0, sticky="ew")
 
-        self.comment_entry = tk.Text(root, width=18, height=10)
+        self.comment_entry = tk.Text(root, width=16, height=10)
         self.comment_entry.grid(row=3, column=2, columnspan=3, padx=(0, 10), pady=0, sticky="ew")
 
-        self.button1 = tk.Button(root, text="Open Explorer", command=self.open_explorer, height=2, width=18)
+        self.button1 = tk.Button(root, text="Open Explorer", command=self.open_explorer, height=2, width=16)
         self.button1.grid(row=4, column=1, columnspan=2, padx=(0, 10), pady=0, sticky="ew")
 
-        self.button2 = tk.Button(root, text="Save", command=self.save_image, height=2, width=18, bg="#90EE90")
+        self.button2 = tk.Button(root, text="Save", command=self.save_image, height=2, width=16, bg="#90EE90")
         self.button2.grid(row=4, column=3, columnspan=2, padx=(0, 10), pady=0, sticky="ew")
 
-        self.button3 = tk.Button(root, text="Start", command=self.start_process, height=2, width=18)
+        self.button3 = tk.Button(root, text="Start", command=self.start_process, height=2, width=16)
         self.button3.grid(row=5, column=1, columnspan=2, padx=(0, 10), pady=0, sticky="ew")
 
         self.button4 = tk.Button(
-            root, text="Change Save Directory", command=self.select_save_directory, height=2, width=18
+            root, text="Change Save Directory", command=self.select_save_directory, height=2, width=16
         )
         self.button4.grid(row=5, column=3, columnspan=2, padx=(0, 10), pady=0, sticky="ew")
 
         self.clear_comment_button = tk.Button(
-            root, text="Clear Comment", command=self.clear_comment, height=2, width=18
+            root, text="Clear Comment", command=self.clear_comment, height=2, width=16
         )
         self.clear_comment_button.grid(row=6, column=1, columnspan=2, padx=(0, 10), pady=0, sticky="ew")
 
@@ -182,9 +182,37 @@ class ImageSaverApp:
         view_image = cv2.resize(combined_images, (0, 0), fx=0.2, fy=0.2)
         self.update_image_grid(view_image)
 
+        self.osk_process = None
+        self.bind_entries(self.root)
+        self.root.bind("<Button-1>", self.on_click)
+
         end_time = time.time()
         print(f"APP initialization took {end_time - start_time} seconds.")
-        subprocess.Popen("osk", shell=True)
+
+    def bind_entries(self, parent):
+        """Recursively bind focus events to all Entry widgets."""
+        for child in parent.winfo_children():
+            if isinstance(child, tk.Entry) or isinstance(child, tk.Text):
+                child.bind("<FocusIn>", self.show_keyboard)
+                child.bind("<FocusOut>", self.hide_keyboard)
+            elif isinstance(child, tk.Widget):
+                self.bind_entries(child)
+
+    def show_keyboard(self, event):
+        if self.osk_process is None:
+            self.osk_process = subprocess.Popen("osk", shell=True)
+
+    def hide_keyboard(self, event):
+        widget = self.root.focus_get()
+        if not isinstance(widget, (tk.Entry, tk.Text)):
+            if self.osk_process is not None:
+                subprocess.Popen("close_osk.bat", shell=True)
+                self.osk_process = None
+
+    def on_click(self, event):
+        widget = self.root.winfo_containing(event.x_root, event.y_root)
+        if not isinstance(widget, (tk.Entry, tk.Text)):
+            self.root.focus()
 
     def camera_init(self):
         # Initialize the cameras, their thread events, and main app thread condition
@@ -274,7 +302,7 @@ class ImageSaverApp:
         self.view_save_thread.daemon = True
         self.view_save_thread.start()
 
-        self.button3 = tk.Button(root, text="Reload Config", command=self.reload_config, height=2, width=18)
+        self.button3 = tk.Button(root, text="Reload Config", command=self.reload_config, height=2, width=16)
         self.button3.grid(row=5, column=1, columnspan=2, padx=(0, 10), pady=0, sticky="ew")
 
     def reload_config(self):

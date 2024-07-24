@@ -1,14 +1,10 @@
-def is_double(s):
-    try:
-        float(s)
-        return True
-    except ValueError:
-        return False
+import subprocess
+import time
 
+# Open the on-screen keyboard (osk.exe)
+osk_process = subprocess.Popen("osk", shell=True)
+# Wait for 1 seconds
+time.sleep(1)
 
-# Test cases
-print(is_double("3.14"))  # True
-print(is_double("42"))  # True (since integers can be represented as floats)
-print(is_double("abc"))  # False
-print(is_double("4.2e5"))  # True (scientific notation)
-print(is_double(""))  # False
+# Call the batch file to close the on-screen keyboard
+subprocess.Popen("close_osk.bat", shell=True)
